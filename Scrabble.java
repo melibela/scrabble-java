@@ -5,17 +5,17 @@ import java.util.Scanner;
 public class Scrabble {
 
 	String[][] board = new String [15][15]; 
-	int players;
+	int players, turn;
 	String[] words; 
 	int[] startPos;
 	boolean down = false, across = false;
 	Scanner input = new Scanner(System.in);
 	
-	//constructor initializes letters[][] and players
-	public Scrabble(int P)
+	//constructor initializes board[][] and players
+	public Scrabble(int P, int t)
 	{
 		players = P;
-		
+		turn = t;
 		for(int row=0; row<board.length; row++)
 			for(int column=0; column<board[row].length; column++)
 				board[row][column] = "[_]";
@@ -34,8 +34,6 @@ public class Scrabble {
 			System.out.printf("%4d\n", row+1);
 		}
 	}
-	
-	
 	
 	public void play()
 	{
@@ -61,12 +59,22 @@ public class Scrabble {
 	public void getStart()
 	{
 		//where the player wants to start writing the word from
-		System.out.printf("Enter your start coordinates: ");
-		String start = input.nextLine();
-		while(!validateStart(start))
+		String start;
+		if(turn==1)
 		{
-			System.out.printf("Not a valid position\nRe-enter position: ");
+			start = "8,8";
+			System.out.println("The first word starts at 8,8");
+			turn++;
+		}
+		else
+		{
+			System.out.printf("Enter your start coordinates: ");
 			start = input.nextLine();
+			while(!validateStart(start))
+				{
+					System.out.printf("Not a valid position\nRe-enter position: ");
+					start = input.nextLine();
+				}
 		}
 		formatStart(start);
 	}
@@ -115,22 +123,35 @@ public class Scrabble {
 	{
 		
 		//REMEMBER the indexes of the board are numbered differently than what they actually represent
-		int i = start[1] - 1;
-		int j = start[0] - 1;
-		for(String letter : word)
+		if(checkFits())
 		{
-			
-			board[i][j] = "[" + letter + "]";
-			if(across)
-				j++;
-			else if(down)
-				i++;
-			
+			System.out.println("Word is too long to start here");
+			turn--;
 		}
-		across = false;
-		down = false;
+		else
+		{
+			int i = start[1] - 1;
+			int j = start[0] - 1;
+			for(String letter : word)
+			{
+				
+				board[i][j] = "[" + letter + "]";
+				if(across)
+					j++;
+				else if(down)
+					i++;
+			
+			}
+			across = false;
+			down = false;
 		
-		buildBoard();
+			buildBoard();
+		}
+	}
+	
+	public boolean checkFits() 
+	{
+		return (words.length+(startPos[0]-1)>15&&across)||(words.length+(startPos[1]-1)>15&&down);
 	}
 	
 	public static boolean validateWord(String word)
