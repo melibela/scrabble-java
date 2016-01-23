@@ -4,43 +4,79 @@ import java.util.Scanner;
 
 public class Scrabble {
 
-	String[][] board = new String [15][15]; 
-	int players, turn;
+	ScrabbleBoard board = new ScrabbleBoard();
+	ScrabblePlayer[] players;
+	ScrabbleWord letters = new ScrabbleWord();
+	int turn, player;
 	String[] words; 
 	int[] startPos;
 	boolean down = false, across = false;
 	Scanner input = new Scanner(System.in);
 	
-	//constructor initializes board[][] and players
-	public Scrabble(int P, int t)
+	//constructor initializes turn and players
+	public Scrabble(int P, int t, int p)
 	{
-		players = P;
+		
+		players = new ScrabblePlayer[P];
+		for(int i=0; i<P; i++)
+		{
+			players[i] = new ScrabblePlayer(i+1, 0, letters.generateLetter(7));
+		}
 		turn = t;
-		for(int row=0; row<board.length; row++)
-			for(int column=0; column<board[row].length; column++)
-				board[row][column] = "[_]";
+		player = p;
+		
+		
+		//check whats in the players array
+		/*for(int i=0; i<P; i++)
+		{
+			System.out.println("players id = "+players[i].player+" turn = "+turn+" score = "+players[i].score+" letters = ");
+			for(String letter : players[i].letters)
+				System.out.print(" "+letter);
+		}*/
+		//System.out.println(players.length);
 		
 	}
 	
 	public void buildBoard()		//prints the contents of each index of letters
 	{
-		for(int column=0; column<board.length; column++)
+		for(int column=0; column<board.column(); column++)
 			System.out.printf("%4d", column+1);
 		System.out.println();
-		for(int row=0; row<board.length; row++)
+		for(int row=0; row<board.row(); row++)
 		{
-			for(int column=0; column<board[row].length; column++)
-				System.out.printf("%4s", board[row][column]);
+			for(int column=0; column<board.row(); column++)
+				System.out.printf("%4s", board.getIndex(row,column));
 			System.out.printf("%4d\n", row+1);
 		}
 	}
 	
+	
 	public void play()
 	{
+		System.out.println("Player "+players[player].getPlayer()+"'s turn");
+		System.out.println("Your letters are :");
+			for(String letter : players[player].letters)
+				System.out.print(" "+letter);
+			System.out.println();
 		getWord();
 		getStart();
 		getEnd();
-		writeBox(words, startPos);
+		for(int i =0; i<letters.distribution.length; i++)
+			System.out.print(" " + letters.distribution[i]);
+		System.out.println();
+		boolean success = writeBox(words, startPos);
+		if(success && player == players.length - 1)
+			player = 0;
+		else if(success)
+		{
+			player++;
+			turn++;
+		}
+		
+		for(int i =0; i<letters.distribution.length; i++)
+			System.out.print(" " + letters.distribution[i]);
+		System.out.println();
+		
 	}
 	
 	public void getWord()
@@ -60,11 +96,11 @@ public class Scrabble {
 	{
 		//where the player wants to start writing the word from
 		String start;
-		if(turn==1)
+		if(turn==0)
 		{
 			start = "8,8";
 			System.out.println("The first word starts at 8,8");
-			turn++;
+	
 		}
 		else
 		{
@@ -99,6 +135,7 @@ public class Scrabble {
 		//format word into an array of uppercase characters that can be individually placed on board
 		word = word.toUpperCase();
 		words = word.split("(?<!^)(?=[A-Z+-])");	//use regex so split doesnt insert empty string in beginning of array
+		
 	}
 	
 	public void formatStart(String start)
@@ -119,14 +156,23 @@ public class Scrabble {
 			down = true;
 	}
 	
-	public void writeBox(String[] word, int[] start)			//writes the contents of board when a word is added
+	public boolean writeBox(String[] word, int[] start)			//writes the contents of board when a word is added
 	{
-		
 		//REMEMBER the indexes of the board are numbered differently than what they actually represent
+	
+		boolean success = false;
+		
 		if(checkFits())
 		{
 			System.out.println("Word is too long to start here");
-			turn--;
+		}	
+		else if(!connected()&&turn!=0)
+		{
+			System.out.println("Your word has to connect with another word on the board");
+		}
+		else if(!hasLetters())
+		{
+			System.out.println("You don't have the letters to play this word");
 		}
 		else
 		{
@@ -134,24 +180,94 @@ public class Scrabble {
 			int j = start[0] - 1;
 			for(String letter : word)
 			{
-				
-				board[i][j] = "[" + letter + "]";
+				board.setIndex(i, j, "[" + letter + "]");
+				board.setOccupied(i,j);
+				if(players[player].useLetter(letter));
+					players[player].setLetters(letters.generateLetter(1));
 				if(across)
 					j++;
 				else if(down)
 					i++;
-			
 			}
-			across = false;
-			down = false;
-		
+					
 			buildBoard();
+			
+			success = true;
 		}
+		
+		across = false;
+		down = false;
+		
+		return success;
 	}
 	
+	
+	
+	public boolean connected()
+	{
+		boolean connects=false;
+		int i = startPos[1] - 1;
+		int j = startPos[0] - 1;
+		for(String letter : words)
+		{
+			if(board.getOccupied(i, j))
+			{	
+				if(board.indexMatch(i, j, "[" + letter + "]"))
+				{
+					connects = true;
+				}
+				else
+				{
+					System.out.println("The letters where you're trying to connect the words don't match");
+					connects = false;
+					break;
+				}
+			}
+			if(across)
+				j++;
+			else if(down)
+				i++;
+		
+		}
+		
+		return connects;
+	}
+
 	public boolean checkFits() 
 	{
 		return (words.length+(startPos[0]-1)>15&&across)||(words.length+(startPos[1]-1)>15&&down);
+	}
+	
+	public boolean hasLetters()
+	{
+		int i = startPos[1] - 1;
+		int j = startPos[0] - 1;
+		boolean found = false;
+	//	String[] lettersUsed = new String[words.length];
+		for(String word : words)
+		{
+			found = false;
+			for(String letter : players[player].getLetters())
+				if(word.equals(letter))
+				{
+					found = true;
+					break;	
+				}
+				else if(board.indexMatch(i, j, "[" + word + "]"))
+				{
+					found = true;
+					break;
+				}	
+			if(!found)
+				break;
+			
+			if(across)
+				j++;
+			else if(down)
+				i++;
+		}
+		
+		return found;
 	}
 	
 	public static boolean validateWord(String word)
